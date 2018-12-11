@@ -1,0 +1,15 @@
+function [output_data] = to_nonlinear(input_data)
+
+linear = input_data;
+poly2 = input_data.^2;
+
+quantile25 = quantile(input_data, 0.25);
+quantile50 = quantile(input_data, 0.5);
+quantile75 = quantile(input_data, 0.75);
+
+data25 = input_data - quantile25;
+data25 = input_data - quantile25;
+data25 = input_data - quantile25;
+
+
+output = [];
