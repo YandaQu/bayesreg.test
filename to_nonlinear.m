@@ -15,4 +15,8 @@ data25(data25 < 0) = 0;
 data50(data50 < 0) = 0;
 data75(data75 < 0) = 0;
 
+data25 = exp(data25);
+data50 = exp(data50);
+data75 = exp(data75);
+
 output_data = [linear, poly2, data25, data50, data75];
