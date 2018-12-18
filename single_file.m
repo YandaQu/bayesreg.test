@@ -1,46 +1,56 @@
-location = 'C:\Users\yanda\Downloads\sparse.csv';
-data = csvread(location, 1);
-data_size = size(data);
+% #########################################################################
+% parameters which users need to specify
 
-acc_10repeats = zeros(10,1);
-acc_10lasso = zeros(10,1);
-for n = 1:10
-    cv = cvpartition(data_size(1), 'KFold', 10);
-    acc_10folds = zeros(10,1);
-    acc_lasso = zeros(10,1);
-    for i = 1:10 
-        data_train_X = data(cv.training(i),1:(data_size(2)-1));
-        col_left = (var(data_train_X) ~= 0);
-        data_train_X = data_train_X(:,col_left);
-        data_train_y = data(cv.training(i),data_size(2));
-        data_test_X = data(cv.test(i),1:(data_size(2)-1));
-        data_test_X = data_test_X(:,col_left);
-        data_test_y = data(cv.test(i),data_size(2));
-        
-        % bayesian
-        [beta, beta0, retval] = bayesreg(data_train_X, data_train_y, 'logistic', 'lasso', 'nsamples',1e4,'display',false);
-        pred_test_y = br_predict(data_test_X, beta, beta0, retval);
-        
-        test_size = size(data_test_y);
-        acc = sum((pred_test_y.yhat == data_test_y))/test_size(1);
-        acc_10folds(i) = acc;
-        
-        % lassoglm
-        [B,FitInfo] = lassoglm(data_train_X, data_train_y,'binomial','CV',3);
-        idxLambdaMinDeviance = FitInfo.IndexMinDeviance;
-        B0 = FitInfo.Intercept(idxLambdaMinDeviance);
-        coef = [B0; B(:,idxLambdaMinDeviance)];
-        yhat = glmval(coef, data_test_X,'logit');
-        yhatBinom = (yhat>=0.5);
-        
-        acc = sum((yhatBinom == data_test_y))/test_size(1);
-        acc_lasso(i) = acc;
-    end
-    acc_current = mean(acc_10folds);
-    acc_10repeats(n) = acc_current;
-    
-    acc_current_lasso = mean(acc_lasso);
-    acc_10lasso(n) = acc_current_lasso;
+% location of the csv file, default ''
+loc = 'C:/Users/yanda/Desktop/bayesreg.test/Classification/Adult Income/adult_processed.csv';
+% the number of iterations to repeat, default 10
+iter = 2;
+% the number of folds to split for cross-validation, default 10
+num_folds = 2;
+% whether or not performing truncated power spline, default false
+nonlinear = false;
+% if performing truncated power spline, how many knots to use, default 4
+num_knots = 4;
+% specify the model to be used in bayesreg, default gaussian
+model = 'logistic';
+% specify the prior to be used in bayesreg, default lasso
+prior = 'lasso';
+
+% #########################################################################
+% the main part of the program
+
+% read the file into matlab as a numerical matrix
+df = csvread(loc,1);
+
+% if needs to perform truncated power spline
+if nonlinear
+    df = to_nonlinear(df);
 end
-disp(mean(acc_10repeats))
-disp(mean(acc_10lasso))
+
+% repeat for iter number of iterations
+for i = 1:iter
+    
+    % generate cross validation partitions
+    cv = cvpartition(length(df), 'KFold', num_folds);
+    for j = 1:cv.NumTestSets
+        % for each iteration in cross validation, get indexes of training 
+        % and testing set
+        trIdx = cv.training(j);
+        teIdx = cv.test(j);
+        
+        % split traing and testing data according to indexes
+        trdf_X = df(trIdx, 1:end-1);
+        trdf_y = df(trIdx, end);
+        tedf_X = df(teIdx, 1:end-1);
+        tedf_y = df(teIdx, end);
+        
+        % since bayesreg cannot accept invariate data, delete these columns
+        colStay = (var(trdf_X) ~= 0);
+        trdf_X = trdf_X(:, colStay);
+        tedf_X = tedf_X(:, colStay);
+        
+        % run bayesreg and show result stats
+        [beta, beta0, retval] = bayesreg(trdf_X, trdf_y, model, prior, 'display', false);
+        [pred, predstats] = br_predict(tedf_X, beta, beta0, retval, 'ytest', tedf_y, 'display', true);
+    end
+end
