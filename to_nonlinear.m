@@ -7,16 +7,19 @@ quantile25 = quantile(input_data, 0.25);
 quantile50 = quantile(input_data, 0.5);
 quantile75 = quantile(input_data, 0.75);
 
+
 data25 = input_data - quantile25;
 data50 = input_data - quantile50;
 data75 = input_data - quantile75;
+
 
 data25(data25 < 0) = 0;
 data50(data50 < 0) = 0;
 data75(data75 < 0) = 0;
 
-data25 = exp(data25);
-data50 = exp(data50);
-data75 = exp(data75);
+data0 = input_data.^3;
+data25 = data25.^3;
+data50 = data50.^3;
+data75 = data75.^3;
 
-output_data = [linear, poly2, data25, data50, data75];
+output_data = [linear, poly2, data0, data25, data50, data75];
